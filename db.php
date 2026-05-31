@@ -27,7 +27,9 @@ try {
         id INT AUTO_INCREMENT PRIMARY KEY,
         deck_id INT NOT NULL,
         front TEXT NOT NULL,
-        back TEXT NOT NULL
+        back TEXT NOT NULL,
+        difficulty INT DEFAULT 0,
+        times_reviewed INT DEFAULT 0
     )");
 } catch (PDOException $e) {
     die("DB Error: " . $e->getMessage());
