@@ -3,6 +3,8 @@ require_once 'auth.php';
 if (!checkAuth()) { header("Location: index.php"); exit; }
 
 $deck_id = $_GET['id'] ?? 0;
+$card_search = isset($_GET['card_search']) ? $_GET['card_search'] : '';
+
 $stmt = $pdo->prepare("SELECT * FROM decks WHERE id = ?");
 $stmt->execute([$deck_id]);
 $deck = $stmt->fetch();
@@ -27,11 +29,20 @@ if ($is_owner && isset($_POST['add_card'])) {
 <h2>Deck: <?php echo htmlspecialchars($deck['title']); ?></h2>
 
 <?php if ($is_owner): ?>
+    <h4>Search in this Deck</h4>
+    <form method="GET" action="deck_view.php">
+        <input type="hidden" name="id" value="<?php echo $deck_id; ?>">
+        Search Phrase: <input type="text" name="card_search" value="<?php echo htmlspecialchars($card_search); ?>">
+        <button type="submit">Filter Cards</button>
+        <a href="deck_view.php?id=<?php echo $deck_id; ?>">Clear Filter</a>
+    </form>
+    <br>
+
     <h4>Add Card</h4>
     <form method="POST">
         Front: <input type="text" name="front" required>
         Back: <input type="text" name="back" required>
-        <button type="submit" name="add_card">Add</button>
+        <button type="submit" name="add_card">Add Card</button>
     </form>
     <br>
     <a href="bulk_select.php?deck_id=<?php echo $deck_id; ?>">Delete Multiple Cards</a>
@@ -44,9 +55,24 @@ if ($is_owner && isset($_POST['add_card'])) {
         <?php if ($is_owner): ?><th>Actions</th><?php endif; ?>
     </tr>
     <?php
-    $stmt = $pdo->prepare("SELECT * FROM cards WHERE deck_id = ?");
-    $stmt->execute([$deck_id]);
-    while ($card = $stmt->fetch()): ?>
+    $sql = "SELECT * FROM cards WHERE deck_id = ?";
+    $params = [$deck_id];
+
+    if ($card_search !== '') {
+        $sql .= " AND (front LIKE ? OR back LIKE ?)";
+        $params[] = "%$card_search%";
+        $params[] = "%$card_search%";
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $cards = $stmt->fetchAll();
+
+    if (!$cards) {
+        echo "<tr><td colspan='3'>No cards found matching your criteria.</td></tr>";
+    }
+
+    foreach ($cards as $card): ?>
     <tr>
         <?php if ($is_owner): ?>
             <form method="POST">
@@ -63,7 +89,7 @@ if ($is_owner && isset($_POST['add_card'])) {
             <td><?php echo htmlspecialchars($card['back']); ?></td>
         <?php endif; ?>
     </tr>
-    <?php endwhile; ?>
+    <?php endforeach; ?>
 </table>
 </body>
 </html>
